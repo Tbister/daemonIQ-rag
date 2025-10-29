@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+*.log
+.DS_Store
+
+# Local data & models
+data/
+qdrant_storage/
+ollama/
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+llama-index
+qdrant-client
+pypdf
+llama-index-llms-ollama
+llama-index-vector-stores-qdrant
+llama-index-embeddings-fastembed
+python-dotenv
+requests
