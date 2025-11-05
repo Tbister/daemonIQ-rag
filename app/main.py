@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import logging
 
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings, StorageContext
 from llama_index.embeddings.fastembed import FastEmbedEmbedding
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.core.node_parser import SentenceSplitter
@@ -37,7 +37,6 @@ Settings.llm = Ollama(model=OLLAMA_MODEL, request_timeout=300.0)
 Settings.node_parser = SentenceSplitter(chunk_size=800, chunk_overlap=120)
 
 client = QdrantClient(url=QDRANT_URL)
-vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION)
 
 app = FastAPI()
 _index_cache = None
@@ -70,27 +69,45 @@ def test_ollama():
 
 
 def build_index():
-    # Ensure collection exists with correct dimensions (384 for bge-small-en-v1.5)
-    try:
-        client.get_collection(COLLECTION)
-        logger.info(f"Collection {COLLECTION} already exists")
-    except Exception:
-        logger.info(f"Creating collection {COLLECTION} with dimension 384")
-        client.create_collection(
-            collection_name=COLLECTION,
-            vectors_config={"size": 384, "distance": "Cosine"}
-        )
+    logger.info(f"Starting ingestion from {DATA_DIR}")
 
+    # Load documents
     docs = SimpleDirectoryReader(DATA_DIR, required_exts=[".pdf", ".txt", ".md"]).load_data()
     logger.info(f"Loaded {len(docs)} documents from directory")
 
-    # Create index and insert into vector store
-    index = VectorStoreIndex.from_documents(docs, vector_store=vector_store, show_progress=True)
-    logger.info(f"Index created with {len(docs)} documents")
+    # Recreate collection to ensure clean state
+    try:
+        client.delete_collection(COLLECTION)
+        logger.info(f"Deleted existing collection {COLLECTION}")
+    except Exception:
+        logger.info(f"Collection {COLLECTION} did not exist")
+
+    logger.info(f"Creating fresh collection {COLLECTION} with dimension 384")
+    client.create_collection(
+        collection_name=COLLECTION,
+        vectors_config={"size": 384, "distance": "Cosine"}
+    )
+
+    # Create vector store AFTER collection exists
+    vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION)
+    storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+    logger.info(f"Building index with {len(docs)} documents...")
+    # Create index with proper storage context
+    index = VectorStoreIndex.from_documents(
+        docs,
+        storage_context=storage_context,
+        show_progress=True
+    )
+    logger.info(f"Index created successfully")
 
     # Verify vectors were stored
     collection_info = client.get_collection(COLLECTION)
-    logger.info(f"Collection now has {collection_info.points_count} vectors")
+    vector_count = collection_info.points_count
+    logger.info(f"✅ Collection now has {vector_count} vectors")
+
+    if vector_count == 0:
+        logger.error("⚠️ WARNING: No vectors were stored! Check embeddings configuration.")
 
     return index
 
@@ -98,7 +115,11 @@ def build_index():
 def get_or_build_index():
     global _index_cache
     if _index_cache is None:
+        logger.info(f"Loading index from Qdrant collection: {COLLECTION}")
+        # Create vector store and load existing index
+        vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION)
         _index_cache = VectorStoreIndex.from_vector_store(vector_store)
+        logger.info("Index loaded from vector store")
     return _index_cache
 
 
