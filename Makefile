@@ -15,7 +15,12 @@ run:
 	$(ACT) && cd app && uvicorn main:app --reload --port 8000
 
 ingest:
-	curl -s -X POST localhost:8000/ingest | jq . || curl -s -X POST localhost:8000/ingest
+	curl -s -X POST localhost:8000/ingest -H 'Content-Type: application/json' -d '{"force_rebuild":false}' | jq . || \
+	curl -s -X POST localhost:8000/ingest -H 'Content-Type: application/json' -d '{"force_rebuild":false}'
+
+ingest-rebuild:
+	curl -s -X POST localhost:8000/ingest -H 'Content-Type: application/json' -d '{"force_rebuild":true}' | jq . || \
+	curl -s -X POST localhost:8000/ingest -H 'Content-Type: application/json' -d '{"force_rebuild":true}'
 
 ask:
 	curl -s -X POST localhost:8000/chat -H 'Content-Type: application/json' -d '{"q":"$(Q)","k":4}' | jq . || \
