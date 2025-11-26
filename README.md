@@ -1,6 +1,6 @@
 # RAG Demo (FastAPI + LlamaIndex + Qdrant + Ollama)
 
-Local, Mac‑friendly RAG you can demo in < 90 minutes. No paid APIs.
+Local RAG,  No paid APIs.
 
 ## Stack
 - Vector DB: Qdrant (Docker)
