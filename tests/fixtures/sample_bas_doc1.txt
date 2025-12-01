@@ -1,0 +1,12 @@
+JACE 9000 Controller Overview
+
+The JACE 9000 is a compact, embedded IoT controller and server platform
+manufactured by Tridium. It runs the Niagara Framework and provides:
+
+- BACnet/IP and BACnet MS/TP connectivity
+- Web-based configuration and graphics
+- Support for multiple field protocols
+- Built-in alarming and scheduling
+
+Installation requires 24VAC power supply and Ethernet connectivity.
+Default IP configuration uses DHCP. Access the controller at port 443.
