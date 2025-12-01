@@ -1,4 +1,4 @@
-# RAG-lite Architecture Overview
+# DaemonIQ Architecture Overview
 
 ## 🏗️ System Architecture
 
@@ -171,29 +171,30 @@ Question: "What is Ciper 30?"
 ## 📂 File Structure & Purpose
 
 ```
-RAG-lite/
+daemonIQ-rag/
 ├── app/
-│   └── main.py                 # FastAPI app - ALL logic here (234 lines)
+│   └── main.py                 # FastAPI app - ALL logic here
 │
-├── data/                       # Source documents
-│   ├── Ciper 30 installation guide.pdf
-│   └── Ciper 30 user guide.pdf
+├── data/                       # Source documents (PDFs not in git)
+│   └── README.md               # Instructions for adding documents
 │
 ├── docker/
 │   ├── qdrant.docker-compose.yml    # Qdrant container config
-│   └── qdrant_storage/              # Persistent vector storage
+│   └── qdrant_storage/              # Persistent vector storage (not in git)
 │
-├── .venv/                      # Python virtual environment (456MB)
+├── .venv/                      # Python virtual environment (gitignored)
 │
-├── .env                        # Runtime configuration
+├── .env                        # Runtime configuration (gitignored)
 │   ├── OLLAMA_MODEL=qwen2.5:0.5b
 │   ├── QDRANT_URL=http://localhost:6333
 │   └── DATA_DIR=../data
 │
+├── .env.example                # Template configuration
 ├── Makefile                    # Dev commands (setup, run, ingest, etc.)
 ├── requirements.txt            # Python dependencies
 ├── README.md                   # User guide
-└── PERFORMANCE.md              # Optimization guide
+├── QUICKSTART.md               # Quick start guide
+└── ARCHITECTURE.md             # This file
 ```
 
 ---

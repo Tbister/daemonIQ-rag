@@ -1,4 +1,4 @@
-# 🚀 RAG-lite QUICK START GUIDE
+# 🚀 DaemonIQ QUICK START GUIDE
 
 **Local Building Automation System (BAS) Technical Assistant**
 

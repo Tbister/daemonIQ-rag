@@ -3,8 +3,11 @@ uvicorn
 llama-index
 qdrant-client
 pypdf
+cryptography
 llama-index-llms-ollama
 llama-index-vector-stores-qdrant
 llama-index-embeddings-fastembed
+llama-index-readers-file
+fastembed
 python-dotenv
 requests
