@@ -78,7 +78,7 @@ Open [http://localhost:3000](http://localhost:3000) and wire up your knowledge b
 
 ### LLM is Too Slow? (25+ minutes per query)
 
-The default `llama3.1` model can be extremely slow on Macs. Here are solutions:
+The default `llama3.1` model can be extremely. Here are solutions:
 
 **Option 1: Use a Faster Model (RECOMMENDED)**
 
