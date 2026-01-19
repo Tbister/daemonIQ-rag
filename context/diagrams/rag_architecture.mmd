@@ -1,0 +1,96 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#e6e6fa', 'primaryTextColor': '#333', 'primaryBorderColor': '#9370db', 'lineColor': '#666', 'secondaryColor': '#fffacd', 'tertiaryColor': '#ffb6c1'}}}%%
+flowchart TB
+    User([User])
+
+    subgraph Phase1A["Phase 1A: Ingest-Time"]
+        PDFDocs[PDF Documents<br/>data/]
+        ParseChunk[Parse & Chunk<br/>800 tokens]
+        GroundChunk[Ground Chunk<br/>POST /api/ground]
+    end
+
+    subgraph Phase1B["Phase 1B: Query-Time Steering"]
+        UserQuery[User Query]
+        GroundQuery[Ground Query<br/>POST /api/ground]
+    end
+
+    subgraph Services["Services"]
+        DaemonIQRAG[daemonIQ-rag API<br/>:8000]
+        BASOnto[BAS-Ontology<br/>:8001<br/>/api/ground]
+        FastEmbed[FastEmbed<br/>BGE-small-en-v1.5]
+        Qdrant[(Qdrant Vector DB<br/>:6333)]
+        Ollama[Ollama LLM<br/>qwen2.5:0.5b]
+    end
+
+    subgraph IngestFlow["Ingest Flow"]
+        AddPayload[Add Payload:<br/>equip, brick_equip,<br/>ptags, raw, gconf]
+        GenEmbed[Generate<br/>Embedding]
+        Upsert[Upsert to<br/>Qdrant]
+    end
+
+    subgraph QueryFlow["Query Flow"]
+        ConfCheck{Confidence<br/>>= 0.6?}
+        ValidConcepts{Valid<br/>Concepts?}
+        BuildFilter[Build OR Filter<br/>equip | brick_equip | ptags]
+        VanillaSearch[Qdrant Search<br/>NO Filter<br/>limit=top_k]
+        GroundedSearch[Qdrant Search<br/>WITH Filter<br/>limit=top_k*4]
+        ResultsCheck{Results<br/>> 0?}
+        Rerank[Rerank by Overlap<br/>equip:1.5x<br/>brick:1.3x<br/>ptags:1.2x]
+        SelectTopK[Select Top K]
+        LLMGen[LLM Generate<br/>Answer]
+    end
+
+    Answer([Answer +<br/>Citations])
+
+    %% Ingest-time flow
+    PDFDocs --> ParseChunk
+    ParseChunk --> GroundChunk
+    GroundChunk --> DaemonIQRAG
+    DaemonIQRAG --> BASOnto
+    BASOnto --> AddPayload
+    AddPayload --> GenEmbed
+    GenEmbed --> FastEmbed
+    FastEmbed --> Upsert
+    Upsert --> Qdrant
+
+    %% Query-time flow
+    User --> UserQuery
+    UserQuery --> DaemonIQRAG
+    DaemonIQRAG --> GroundQuery
+    GroundQuery --> BASOnto
+    BASOnto --> ConfCheck
+
+    ConfCheck -->|Yes| ValidConcepts
+    ConfCheck -->|No| VanillaSearch
+
+    ValidConcepts -->|Yes| BuildFilter
+    ValidConcepts -->|No| VanillaSearch
+
+    BuildFilter --> GroundedSearch
+    GroundedSearch --> Qdrant
+    Qdrant --> ResultsCheck
+
+    ResultsCheck -->|"> 0 results"| Rerank
+    ResultsCheck -->|"0 results"| VanillaSearch
+
+    VanillaSearch --> Qdrant
+    Qdrant --> SelectTopK
+
+    Rerank --> SelectTopK
+    SelectTopK --> LLMGen
+    LLMGen --> Ollama
+    Ollama --> Answer
+    Answer --> User
+
+    %% Styling
+    classDef userNode fill:#fffacd,stroke:#daa520,stroke-width:2px
+    classDef serviceNode fill:#e6e6fa,stroke:#9370db,stroke-width:2px
+    classDef dataNode fill:#fffacd,stroke:#daa520,stroke-width:2px
+    classDef decisionNode fill:#fffacd,stroke:#daa520,stroke-width:2px
+    classDef externalNode fill:#ffb6c1,stroke:#db7093,stroke-width:2px
+
+    class User,Answer userNode
+    class DaemonIQRAG,BASOnto,FastEmbed serviceNode
+    class Qdrant dataNode
+    class ConfCheck,ValidConcepts,ResultsCheck decisionNode
+    class Ollama externalNode
+    class PDFDocs,UserQuery,ParseChunk,GroundChunk,GroundQuery,AddPayload,GenEmbed,Upsert,BuildFilter,VanillaSearch,GroundedSearch,Rerank,SelectTopK,LLMGen dataNode

@@ -1,0 +1,131 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#e6e6fa', 'primaryTextColor': '#333', 'primaryBorderColor': '#9370db', 'lineColor': '#666', 'secondaryColor': '#fffacd', 'tertiaryColor': '#ffb6c1'}}}%%
+flowchart TB
+    subgraph Frontend["Frontend Layer (React/Vite)"]
+        App[App.jsx<br/>Multi-view Layout]
+
+        subgraph GraphView["Graph Visualization"]
+            GraphViewer[GraphViewer.jsx<br/>D3 Graph Visualization]
+            NodeDetailPanel[NodeDetailPanel.jsx<br/>Entity Details]
+            GraphToolbar[GraphToolbar.jsx<br/>Search & Filters]
+            useGraphData[useGraphData Hook]
+        end
+
+        TopologyViewer[TopologyViewer.jsx<br/>System Patterns]
+        useTopologyData[useTopologyData Hook]
+
+        SchemaExplorer[SchemaExplorer.jsx<br/>Brick Schema Browser]
+        useSchemaData[useSchemaData Hook]
+    end
+
+    subgraph API["API Layer (FastAPI)"]
+        MainApp[main.py<br/>FastAPI App]
+
+        subgraph Routers["Routers"]
+            TopologyRouter[routers/topology.py<br/>Topology Patterns]
+            SchemaRouter[routers/schema.py<br/>Brick Schema Endpoints]
+        end
+    end
+
+    subgraph Core["Core Services"]
+        Grounder[grounder.py<br/>Query Grounder<br/>Entity Detection]
+        Annotator[annotator.py<br/>Text Annotator<br/>Tag Detection]
+        OntologyExplorer[Ontology Explorer<br/>Kinds & Search]
+        GraphExport[Graph Export<br/>types/instances/full]
+
+        Graph[graph.py<br/>Knowledge Graph<br/>NetworkX DiGraph]
+        Models[models.py<br/>Pydantic Models]
+    end
+
+    subgraph DataLoad["Data Loading"]
+        Loader[loader.py<br/>Ontology Loader<br/>Haystack v4]
+        Config[config.py<br/>Settings]
+    end
+
+    subgraph GraphStructure["Graph Structure"]
+        TypeNodes[Type Nodes<br/>Haystack kinds<br/>Brick classes]
+        InstanceNodes[Instance Nodes<br/>Equipment<br/>Points]
+        Edges[Edges<br/>subclassOf<br/>equivalentTo<br/>typicallyFeeds<br/>hasTypicalPoint]
+    end
+
+    subgraph DataSources["Data Sources"]
+        HaystackCore[haystack_defs/<br/>haystack_v4.json<br/>60 core kinds]
+        HaystackComplete[haystack_defs/<br/>haystack_v4_complete.json<br/>529 kinds]
+        YorklandExt[haystack_defs/<br/>yorkland_ext.json<br/>14 extensions]
+        Alignments[data/alignments/<br/>haystack_brick_alignment.yaml<br/>Cross-ontology mappings]
+        EquipPoints[data/topology/<br/>equipment_points.yaml<br/>Typical points per equipment]
+        SystemPatterns[data/topology/<br/>system_patterns.yaml<br/>ASHRAE G36 patterns]
+        EquipHierarchy[data/schema/<br/>equipment_hierarchy.yaml<br/>248 Brick equipment classes]
+        PointHierarchy[data/schema/<br/>point_hierarchy.yaml<br/>1,075 Brick point classes]
+        LocationHierarchy[data/schema/<br/>location_hierarchy.yaml]
+        Relationships[data/schema/<br/>relationships.yaml]
+    end
+
+    %% Frontend connections
+    App --> GraphViewer
+    App --> TopologyViewer
+    App --> SchemaExplorer
+
+    GraphViewer --> NodeDetailPanel
+    GraphViewer --> GraphToolbar
+    GraphViewer --> useGraphData
+    TopologyViewer --> useTopologyData
+    SchemaExplorer --> useSchemaData
+
+    %% API connections
+    useGraphData -->|"GET /api/graph/*"| MainApp
+    useTopologyData -->|"GET /api/topology/*"| TopologyRouter
+    useSchemaData -->|"GET /api/schema/*"| SchemaRouter
+
+    %% Main app routes
+    MainApp -->|"/api/ground"| Grounder
+    MainApp -->|"/ontology/*"| OntologyExplorer
+    MainApp -->|"/api/graph/*"| GraphExport
+
+    TopologyRouter --> Graph
+    SchemaRouter --> Graph
+
+    %% Core service dependencies
+    Grounder --> Graph
+    Grounder --> Models
+    Annotator --> Graph
+    OntologyExplorer --> Graph
+    GraphExport --> Graph
+
+    %% Data loading
+    Loader --> Graph
+    Config --> Loader
+
+    %% Graph structure
+    Graph --> TypeNodes
+    Graph --> InstanceNodes
+    Graph --> Edges
+
+    %% Data source loading
+    Loader -->|loads| HaystackCore
+    Loader -->|loads| HaystackComplete
+    Loader -->|loads| YorklandExt
+    Config -->|loads| Alignments
+    Config -->|loads| EquipPoints
+    Config -->|loads| SystemPatterns
+
+    %% Schema data reads
+    SchemaRouter -->|reads| EquipHierarchy
+    SchemaRouter -->|reads| PointHierarchy
+    SchemaRouter -->|reads| LocationHierarchy
+    SchemaRouter -->|reads| Relationships
+
+    TopologyRouter -->|reads| SystemPatterns
+    TopologyRouter -->|reads| EquipPoints
+
+    %% Styling
+    classDef frontend fill:#e6e6fa,stroke:#9370db,stroke-width:2px
+    classDef api fill:#e6e6fa,stroke:#9370db,stroke-width:2px
+    classDef core fill:#e6e6fa,stroke:#9370db,stroke-width:2px
+    classDef data fill:#fffacd,stroke:#daa520,stroke-width:2px
+    classDef graph fill:#e6e6fa,stroke:#9370db,stroke-width:3px
+
+    class App,GraphViewer,NodeDetailPanel,GraphToolbar,useGraphData,TopologyViewer,useTopologyData,SchemaExplorer,useSchemaData frontend
+    class MainApp,TopologyRouter,SchemaRouter api
+    class Grounder,Annotator,OntologyExplorer,GraphExport,Models core
+    class Graph graph
+    class Loader,Config,TypeNodes,InstanceNodes,Edges,HaystackCore,HaystackComplete,YorklandExt,Alignments,EquipPoints,SystemPatterns,EquipHierarchy,PointHierarchy,LocationHierarchy,Relationships data

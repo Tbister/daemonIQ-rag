@@ -12,7 +12,7 @@ qdrant-down:
 	cd docker && docker compose -f qdrant.docker-compose.yml down
 
 run:
-	$(ACT) && cd app && uvicorn main:app --reload --port 8000
+	$(ACT) && uvicorn app.main:app --reload --port 8000
 
 ingest:
 	curl -s -X POST localhost:8000/ingest -H 'Content-Type: application/json' -d '{"force_rebuild":false}' | jq . || \
@@ -32,3 +32,23 @@ stream:
 retrieve:
 	curl -s -X POST localhost:8000/retrieve -H 'Content-Type: application/json' -d '{"q":"$(Q)","k":4}' | jq . || \
 	curl -s -X POST localhost:8000/retrieve -H 'Content-Type: application/json' -d '{"q":"$(Q)","k":4}'
+
+# Observability stack management
+otel-up:
+	docker compose -f docker/docker-compose-observability.yml up -d
+	@echo ""
+	@echo "Observability stack started:"
+	@echo "  Jaeger UI:   http://localhost:16686"
+	@echo "  Prometheus:  http://localhost:9090"
+	@echo "  Grafana:     http://localhost:3000 (admin/admin)"
+	@echo ""
+
+otel-down:
+	docker compose -f docker/docker-compose-observability.yml down
+
+otel-logs:
+	docker compose -f docker/docker-compose-observability.yml logs -f
+
+# Run with tracing enabled
+run-traced:
+	$(ACT) && ENABLE_TRACING=true uvicorn app.main:app --reload --port 8000
