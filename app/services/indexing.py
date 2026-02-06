@@ -76,9 +76,49 @@ def build_index(force_rebuild=False):
     tracer = get_tracer()
     logger.info(f"Starting ingestion from {DATA_DIR} (force_rebuild={force_rebuild})")
 
-    # Load documents
-    docs = SimpleDirectoryReader(DATA_DIR, required_exts=[".pdf", ".txt", ".md"]).load_data()
-    logger.info(f"Loaded {len(docs)} documents from directory")
+    # Load documents - use explicit file list for better control
+    logger.info("Finding PDF files in directory tree...")
+    import glob
+    pdf_files = glob.glob(f"{DATA_DIR}/**/*.pdf", recursive=True)
+    txt_files = glob.glob(f"{DATA_DIR}/**/*.txt", recursive=True)
+    md_files = glob.glob(f"{DATA_DIR}/**/*.md", recursive=True)
+    all_files = pdf_files + txt_files + md_files
+    logger.info(f"Found {len(all_files)} files ({len(pdf_files)} PDFs, {len(txt_files)} TXT, {len(md_files)} MD)")
+
+    if len(all_files) == 0:
+        raise ValueError(f"No PDF, TXT, or MD files found in {DATA_DIR}")
+
+    # Load documents one at a time with progress tracking to identify problematic PDFs
+    logger.info(f"Loading {len(all_files)} documents with progress tracking...")
+    docs = []
+    failed_files = []
+
+    for i, file_path in enumerate(all_files):
+        try:
+            # Show filename without full path for readability
+            filename = file_path.split('/')[-1]
+            logger.info(f"  [{i+1}/{len(all_files)}] Loading: {filename}")
+
+            # Load file
+            reader = SimpleDirectoryReader(input_files=[file_path])
+            file_docs = reader.load_data()
+            docs.extend(file_docs)
+
+            if (i + 1) % 50 == 0:
+                logger.info(f"  Progress: {i+1}/{len(all_files)} files loaded ({len(docs)} documents)")
+        except Exception as e:
+            logger.warning(f"  ⚠️  Failed to load {file_path}: {str(e)}")
+            failed_files.append((file_path, str(e)))
+            continue
+
+    logger.info(f"✅ Loaded {len(docs)} documents from {len(all_files) - len(failed_files)} files")
+    if failed_files:
+        logger.warning(f"⚠️  Failed to load {len(failed_files)} files:")
+        for path, error in failed_files[:5]:  # Show first 5 failures
+            logger.warning(f"     {path}: {error}")
+
+    if len(docs) == 0:
+        raise ValueError(f"No documents were successfully loaded from {DATA_DIR}")
 
     # Check if collection exists
     collection_exists = False
