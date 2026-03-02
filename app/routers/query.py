@@ -9,14 +9,17 @@ from llama_index.core.prompts import PromptTemplate
 from llama_index.core.response_synthesizers import get_response_synthesizer
 from llama_index.core.schema import QueryBundle
 
-from app.config import RETRIEVAL_MODE, OLLAMA_MODEL
+from app.config import RETRIEVAL_MODE, OLLAMA_MODEL, ENABLE_TRACING
 from app.models import QueryReq
 from app.dependencies import get_or_build_index
 from app.services.retrieval import grounded_retrieve
-from app.observability import get_tracer, instrumentation_wrapper
+from app.observability import get_tracer, instrumentation_wrapper, create_rag_metrics
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["query"])
+
+# Instantiate metric instruments if tracing is enabled
+_rag_metrics = create_rag_metrics() if ENABLE_TRACING else {}
 
 # BAS-SPECIFIC prompt optimized for technical manuals
 QA_PROMPT = PromptTemplate(
@@ -105,8 +108,9 @@ def chat(req: QueryReq):
             logger.info(f"Retrieving {top_k} chunks for RAG (mode: {RETRIEVAL_MODE})...")
             retrieval_start = time.time()
             source_nodes = grounded_retrieve(index, query_text, top_k=top_k)
+            retrieval_ms = (time.time() - retrieval_start) * 1000
             retrieval_span.set_attribute("result_count", len(source_nodes))
-            retrieval_span.set_attribute("duration_ms", (time.time() - retrieval_start) * 1000)
+            retrieval_span.set_attribute("duration_ms", retrieval_ms)
 
         # Create query engine and synthesize response from retrieved nodes with tracing
         with tracer.start_as_current_span("llm_synthesis") as llm_span:
@@ -121,7 +125,8 @@ def chat(req: QueryReq):
             query_bundle = QueryBundle(query_str=query_text)
             resp = synthesizer.synthesize(query_bundle, nodes=source_nodes)
 
-            llm_span.set_attribute("duration_ms", (time.time() - llm_start) * 1000)
+            llm_ms = (time.time() - llm_start) * 1000
+            llm_span.set_attribute("duration_ms", llm_ms)
             llm_span.set_attribute("response_length", len(str(resp)))
 
         # Build deduplicated sources array with page numbers for UI
@@ -150,6 +155,15 @@ def chat(req: QueryReq):
         # Log total query time
         total_time_ms = (time.time() - start_time) * 1000
         logger.info(f"Query completed in {total_time_ms:.2f}ms. Sources: {sources}")
+
+        # Record metrics
+        if _rag_metrics:
+            _rag_metrics["query_counter"].add(1, {"mode": RETRIEVAL_MODE})
+            _rag_metrics["query_latency"].record(total_time_ms, {"mode": RETRIEVAL_MODE})
+            _rag_metrics["retrieval_latency"].record(retrieval_ms, {"mode": RETRIEVAL_MODE})
+            _rag_metrics["llm_latency"].record(llm_ms, {"model": OLLAMA_MODEL})
+            _rag_metrics["chunks_retrieved"].record(len(source_nodes), {"mode": RETRIEVAL_MODE})
+
         return {"answer": str(resp), "sources": sources}
     except TimeoutError:
         logger.error("LLM query timed out after 300 seconds")

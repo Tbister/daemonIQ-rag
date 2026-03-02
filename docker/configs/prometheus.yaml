@@ -7,7 +7,5 @@ scrape_configs:
     static_configs:
       - targets: ['otel-collector:8889']
 
-  - job_name: 'daemoniq-rag'
-    static_configs:
-      - targets: ['host.docker.internal:8000']
-    metrics_path: /metrics
+  # The app pushes metrics via OTLP to the collector; collector exposes them at :8889
+  # No direct /metrics endpoint on the app itself
