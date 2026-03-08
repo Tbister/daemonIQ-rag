@@ -8,7 +8,8 @@ the appropriate profile automatically.
 
 # Model fallback chain - try these in order if preferred model unavailable
 MODEL_FALLBACK_CHAIN = [
-    "mistral:7b",      # Preferred: best for technical content
+    "qwen3.5:9b",      # Preferred: best for technical content
+    "mistral:7b",      # Fallback: strong general model
     "llama3.2:3b",     # Fallback: smaller but capable
     "phi3:mini",       # Fallback: good instruction following
     "qwen2.5:1.5b",    # Fallback: fast CPU option
@@ -35,7 +36,7 @@ LLM_PROFILES = {
     },
     "gpu": {
         "description": "GPU-optimized: larger model, full context for best quality",
-        "model": "mistral:7b",
+        "model": "qwen3.5:9b",
         "max_tokens": 500,
         "context_chunks": 4,
         "timeout": 120,       # Allow time for larger model inference
@@ -58,8 +59,8 @@ LLM_PROFILES = {
         "temperature": 0.0,
     },
     "bas_optimized": {
-        "description": "BAS-specific: technical accuracy focus with mistral",
-        "model": "mistral:7b",
+        "description": "BAS-specific: technical accuracy focus with qwen3.5",
+        "model": "qwen3.5:9b",
         "max_tokens": 500,
         "context_chunks": 4,
         "timeout": 90,
