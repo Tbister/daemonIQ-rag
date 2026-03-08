@@ -18,7 +18,7 @@ client = QdrantClient(url=QDRANT_URL)
 
 # Configure LlamaIndex settings
 # 1) Embedding model for both ingest and query (384-d)
-Settings.embed_model = FastEmbedEmbedding(model_name="BAAI/bge-m3")
+Settings.embed_model = FastEmbedEmbedding(model_name="BAAI/bge-large-en-v1.5")
 
 # 2) LLM via modular provider (auto-detects GPU and selects appropriate model)
 Settings.llm = get_llm()
