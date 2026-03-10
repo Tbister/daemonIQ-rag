@@ -137,10 +137,11 @@ def build_index(force_rebuild=False):
 
     if not collection_exists:
         # Create new collection
-        logger.info(f"Creating collection {COLLECTION} with dimension 384")
+        embed_dim = len(Settings.embed_model.get_text_embedding("test"))
+        logger.info(f"Creating collection {COLLECTION} with dimension {embed_dim}")
         client.create_collection(
             collection_name=COLLECTION,
-            vectors_config={"size": 384, "distance": "Cosine"}
+            vectors_config={"size": embed_dim, "distance": "Cosine"}
         )
 
     # Create vector store

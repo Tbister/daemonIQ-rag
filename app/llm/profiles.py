@@ -37,9 +37,9 @@ LLM_PROFILES = {
     "gpu": {
         "description": "GPU-optimized: larger model, full context for best quality",
         "model": "qwen3.5:9b",
-        "max_tokens": 500,
+        "max_tokens": 1024,
         "context_chunks": 4,
-        "timeout": 120,       # Allow time for larger model inference
+        "timeout": 300,
         "temperature": 0.0,
     },
     "dev": {

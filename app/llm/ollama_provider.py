@@ -52,6 +52,7 @@ class OllamaProvider(BaseLLMProvider):
                 base_url=self.config.host,
                 request_timeout=self.config.timeout,
                 temperature=self.config.temperature,
+                thinking=False,
                 additional_kwargs={"num_predict": self.config.max_tokens}
             )
         return self._llm

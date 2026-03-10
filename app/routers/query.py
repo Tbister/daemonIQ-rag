@@ -26,15 +26,14 @@ QA_PROMPT = PromptTemplate(
     "You are a Building Automation System (BAS) technical assistant specializing in Honeywell, Niagara, and CIPer systems.\n\n"
     "INSTRUCTIONS:\n"
     "- Answer ONLY using information from the context below\n"
-    "- If the question asks 'what are' or 'list', format your answer as bullet points\n"
-    "- For expansion modules, extract: model number, size/type, firmware version, DIP switch config, I/O capacity\n"
-    "- Include specific details: model numbers, DIP switch settings, I/O specifications, wiring diagrams\n"
-    "- If the context contains tables or specifications, extract ALL relevant details\n"
+    "- Answer the question directly and naturally — do not impose a fixed structure\n"
+    "- Use bullet points only when listing multiple items or specs; use prose for 'what is' questions\n"
+    "- Include specific technical details (model numbers, I/O specs, DIP switches, wiring) when they are relevant to the question and present in the context\n"
     "- Do NOT make up information or use external knowledge\n"
-    "- If information is missing from context, acknowledge what is available and what is not\n\n"
+    "- Only mention missing information if the user explicitly asked for something that is not in the context\n\n"
     "Context from BAS documentation:\n{context_str}\n\n"
     "Question: {query_str}\n\n"
-    "Answer (extract ALL relevant technical details from context):\n"
+    "Answer:\n"
 )
 
 # Simplified prompt for streaming
@@ -42,12 +41,13 @@ STREAMING_QA_PROMPT = PromptTemplate(
     "You are a Building Automation System (BAS) technical assistant specializing in Honeywell, Niagara, and CIPer systems.\n\n"
     "INSTRUCTIONS:\n"
     "- Answer ONLY using information from the context below\n"
-    "- If the question asks 'what are' or 'list', format your answer as bullet points\n"
-    "- Include specific details: model numbers, DIP switch settings, I/O specifications\n"
+    "- Answer the question directly and naturally\n"
+    "- Use bullet points only when listing multiple items or specs\n"
+    "- Include specific technical details when relevant and present in the context\n"
     "- Do NOT make up information or use external knowledge\n\n"
     "Context from BAS documentation:\n{context_str}\n\n"
     "Question: {query_str}\n\n"
-    "Answer (extract ALL relevant technical details from context):\n"
+    "Answer:\n"
 )
 
 
