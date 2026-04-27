@@ -3,7 +3,7 @@ Shared dependencies: clients, caches, and LlamaIndex settings.
 """
 import logging
 from llama_index.core import VectorStoreIndex, Settings
-from llama_index.embeddings.fastembed import FastEmbedEmbedding
+from llama_index.embeddings.ollama import OllamaEmbedding
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 from llama_index.core.node_parser import SentenceSplitter
 from qdrant_client import QdrantClient
@@ -17,8 +17,12 @@ logger = logging.getLogger(__name__)
 client = QdrantClient(url=QDRANT_URL)
 
 # Configure LlamaIndex settings
-# 1) Embedding model for both ingest and query (384-d)
-Settings.embed_model = FastEmbedEmbedding(model_name="BAAI/bge-large-en-v1.5")
+# 1) Embedding model — nomic-embed-text via Ollama (GPU/Metal accelerated, 768-d)
+Settings.embed_model = OllamaEmbedding(
+    model_name="nomic-embed-text",
+    base_url="http://localhost:11434",
+    embed_batch_size=32
+)
 
 # 2) LLM via modular provider (auto-detects GPU and selects appropriate model)
 Settings.llm = get_llm()

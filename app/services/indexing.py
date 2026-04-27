@@ -2,7 +2,8 @@
 Document indexing and ingestion services.
 """
 import logging
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings, StorageContext
+import os
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, Settings, StorageContext, Document
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
 from app.config import DATA_DIR, COLLECTION
@@ -11,6 +12,93 @@ from app.grounding import extract_grounding_payload, is_grounding_available
 from app.observability import get_tracer, instrumentation_wrapper
 
 logger = logging.getLogger(__name__)
+
+# --- OCR loader (pymupdf + GLM-OCR via Ollama) ---
+IMAGE_TEXT_THRESHOLD = 100  # chars — pages below this get OCR treatment
+GLM_OCR_MODEL = "glm-ocr"
+GLM_OCR_BASE_URL = "http://localhost:11434"
+
+
+def _ocr_page_image(pil_image) -> str:
+    """Run GLM-OCR on a PIL image via Ollama's generate endpoint, return extracted text."""
+    import base64
+    import io
+    import urllib.request
+    import json
+
+    buf = io.BytesIO()
+    pil_image.save(buf, format="PNG")
+    img_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+
+    payload = json.dumps({
+        "model": GLM_OCR_MODEL,
+        "prompt": "Text Recognition:",
+        "images": [img_b64],
+        "stream": False
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        f"{GLM_OCR_BASE_URL}/api/generate",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            result = json.loads(resp.read().decode("utf-8"))
+            return result.get("response", "").strip()
+    except Exception as e:
+        logger.warning(f"GLM-OCR failed on page: {e}")
+        return ""
+
+
+def load_pdf_ocr(file_path: str) -> list:
+    """
+    Load a PDF using pymupdf for text extraction.
+    Pages with little/no text (image-only) are rendered and passed through
+    GLM-OCR via Ollama (Metal/GPU accelerated on Apple Silicon).
+    """
+    import fitz  # pymupdf
+    fname = os.path.basename(file_path)
+    doc = fitz.open(file_path)
+    pages_text = []
+    ocr_pages = 0
+
+    for page_num, page in enumerate(doc):
+        text = page.get_text().strip()
+        if len(text) < IMAGE_TEXT_THRESHOLD:
+            # Page is image-heavy — render and OCR
+            pix = page.get_pixmap(dpi=150)
+            import PIL.Image, io
+            img = PIL.Image.open(io.BytesIO(pix.tobytes("png")))
+            ocr_text = _ocr_page_image(img)
+            if ocr_text.strip():
+                pages_text.append(ocr_text)
+                ocr_pages += 1
+            elif text:
+                pages_text.append(text)
+        else:
+            pages_text.append(text)
+
+    page_count = len(doc)
+    doc.close()
+    full_text = "\n\n".join(pages_text)
+    logger.info(f"  {fname}: {page_count} pages, {ocr_pages} OCR'd, {len(full_text):,} chars")
+
+    if not full_text.strip():
+        logger.warning(f"  No text extracted from {fname}")
+        return []
+
+    return [Document(
+        text=full_text,
+        metadata={
+            "file_name": fname,
+            "file_path": file_path,
+            "file_type": "application/pdf",
+            "file_size": os.path.getsize(file_path),
+            "ocr_pages": ocr_pages,
+        }
+    )]
 
 
 def add_grounding_metadata(nodes, use_grounding=True):
@@ -95,13 +183,15 @@ def build_index(force_rebuild=False):
 
     for i, file_path in enumerate(all_files):
         try:
-            # Show filename without full path for readability
             filename = file_path.split('/')[-1]
             logger.info(f"  [{i+1}/{len(all_files)}] Loading: {filename}")
 
-            # Load file
-            reader = SimpleDirectoryReader(input_files=[file_path])
-            file_docs = reader.load_data()
+            # Use OCR for PDFs, SimpleDirectoryReader for txt/md
+            if file_path.endswith(".pdf"):
+                file_docs = load_pdf_ocr(file_path)
+            else:
+                reader = SimpleDirectoryReader(input_files=[file_path])
+                file_docs = reader.load_data()
             docs.extend(file_docs)
 
             if (i + 1) % 50 == 0:

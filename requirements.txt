@@ -1,16 +1,33 @@
 fastapi
 uvicorn
-llama-index
-qdrant-client
-pypdf
-cryptography
-llama-index-llms-ollama
-llama-index-vector-stores-qdrant
-llama-index-embeddings-fastembed
-llama-index-readers-file
-fastembed
 python-dotenv
 requests
+cryptography
+
+# LlamaIndex core + integrations
+llama-index
+llama-index-llms-ollama
+llama-index-vector-stores-qdrant
+llama-index-embeddings-ollama
+llama-index-embeddings-fastembed
+llama-index-readers-file
+
+# Vector DB
+qdrant-client
+
+# Embeddings
+fastembed
+
+# PDF processing
+pypdf
+
+# OCR pipeline
+torch
+pymupdf
+surya-ocr
+Pillow
+
+# Testing
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 httpx>=0.24.0
