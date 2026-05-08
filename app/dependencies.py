@@ -17,11 +17,11 @@ logger = logging.getLogger(__name__)
 client = QdrantClient(url=QDRANT_URL)
 
 # Configure LlamaIndex settings
-# 1) Embedding model — nomic-embed-text via Ollama (GPU/Metal accelerated, 768-d)
+# 1) Embedding model — bge-m3 via Ollama (8192 token context, 1024-d, multilingual)
 Settings.embed_model = OllamaEmbedding(
-    model_name="nomic-embed-text",
+    model_name="bge-m3",
     base_url="http://localhost:11434",
-    embed_batch_size=32
+    embed_batch_size=16,
 )
 
 # 2) LLM via modular provider (auto-detects GPU and selects appropriate model)
@@ -34,8 +34,8 @@ logger.info(
     f"accelerated={llm_info.is_gpu_accelerated}"
 )
 
-# 3) Chunker - optimized for BAS technical manuals
-Settings.node_parser = SentenceSplitter(chunk_size=800, chunk_overlap=200)
+# 3) Chunker
+Settings.node_parser = SentenceSplitter(chunk_size=512, chunk_overlap=128)
 
 # Index cache for lazy loading
 _index_cache = None
